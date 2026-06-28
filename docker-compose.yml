@@ -1,0 +1,293 @@
+version: "3.9"
+
+# ═══════════════════════════════════════════════════
+# ScholarScout — Local Development Stack
+# ═══════════════════════════════════════════════════
+
+x-common-env: &common-env
+  APP_ENV: development
+  APP_DEBUG: "true"
+  DATABASE_URL: postgresql+asyncpg://scholarscout:scholarscout@postgres:5432/scholarscout
+  DATABASE_SYNC_URL: postgresql+psycopg2://scholarscout:scholarscout@postgres:5432/scholarscout
+  REDIS_URL: redis://redis:6379/0
+  REDIS_CELERY_URL: redis://redis:6379/1
+  REDIS_CACHE_URL: redis://redis:6379/2
+  REDIS_STREAMS_URL: redis://redis:6379/3
+  CELERY_BROKER_URL: redis://redis:6379/1
+  CELERY_RESULT_BACKEND: redis://redis:6379/1
+  STORAGE_ENDPOINT_URL: http://minio:9000
+  STORAGE_ACCESS_KEY: minioadmin
+  STORAGE_SECRET_KEY: minioadmin
+  STORAGE_USE_SSL: "false"
+  OPENSEARCH_URL: https://opensearch:9200
+  OPENSEARCH_VERIFY_CERTS: "false"
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otelcollector:4317
+  SENTRY_DSN: ""
+  LOG_LEVEL: INFO
+  LOG_FORMAT: console
+
+x-api-healthcheck: &api-healthcheck
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+    interval: 30s
+    timeout: 10s
+    retries: 5
+    start_period: 40s
+
+x-worker-base: &worker-base
+  build:
+    context: .
+    dockerfile: docker/worker/Dockerfile
+    target: development
+  environment: *common-env
+  volumes:
+    - ./src:/app/src:ro
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    minio:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+
+  # ── Infrastructure ─────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: scholarscout
+      POSTGRES_PASSWORD: scholarscout
+      POSTGRES_DB: scholarscout
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scholarscout -d scholarscout"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: >
+      postgres
+        -c max_connections=200
+        -c shared_buffers=256MB
+        -c effective_cache_size=1GB
+        -c maintenance_work_mem=64MB
+        -c checkpoint_completion_target=0.9
+        -c wal_buffers=16MB
+        -c default_statistics_target=100
+        -c random_page_cost=1.1
+        -c effective_io_concurrency=200
+        -c work_mem=4MB
+        -c huge_pages=off
+
+  redis:
+    image: redis:7.4-alpine
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  minio-setup:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 minioadmin minioadmin;
+        mc mb --ignore-existing local/scholarscout-snapshots;
+        mc mb --ignore-existing local/scholarscout-assets;
+        mc mb --ignore-existing local/scholarscout-exports;
+        mc policy set download local/scholarscout-assets;
+        exit 0;
+      "
+
+  opensearch:
+    image: opensearchproject/opensearch:2.17.1
+    environment:
+      - discovery.type=single-node
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - DISABLE_SECURITY_PLUGIN=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.17.1
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    ports:
+      - "5601:5601"
+    depends_on:
+      opensearch:
+        condition: service_healthy
+
+  # ── Observability ──────────────────────────────
+
+  otelcollector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./monitoring/otel/config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "4317:4317"   # gRPC
+      - "4318:4318"   # HTTP
+      - "8889:8889"   # Prometheus metrics
+
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+      - "--storage.tsdb.retention.time=30d"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts:/etc/prometheus/alerts:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+
+  # ── Application ────────────────────────────────
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+      target: development
+    environment:
+      <<: *common-env
+      API_WORKERS: "1"
+    volumes:
+      - ./src:/app/src:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+    <<: *api-healthcheck
+    restart: unless-stopped
+
+  # ── Celery Workers ─────────────────────────────
+
+  worker-crawler:
+    <<: *worker-base
+    command: >
+      celery -A scholarscout.contexts.crawler.workers.celery_app worker
+        --queues=crawl.high,crawl.normal,crawl.low
+        --concurrency=8
+        --loglevel=info
+        --hostname=crawler@%h
+
+  worker-extraction:
+    <<: *worker-base
+    command: >
+      celery -A scholarscout.contexts.crawler.workers.celery_app worker
+        --queues=extraction.high,extraction.normal
+        --concurrency=4
+        --loglevel=info
+        --hostname=extractor@%h
+
+  worker-notifications:
+    <<: *worker-base
+    command: >
+      celery -A scholarscout.contexts.crawler.workers.celery_app worker
+        --queues=notifications
+        --concurrency=2
+        --loglevel=info
+        --hostname=notifier@%h
+
+  celery-beat:
+    <<: *worker-base
+    command: >
+      celery -A scholarscout.contexts.crawler.workers.celery_app beat
+        --loglevel=info
+        --scheduler=celery.beat:PersistentScheduler
+
+  flower:
+    <<: *worker-base
+    command: >
+      celery -A scholarscout.contexts.crawler.workers.celery_app flower
+        --port=5555
+        --basic-auth=admin:admin
+    ports:
+      - "5555:5555"
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  opensearch_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: scholarscout_network
+    driver: bridge

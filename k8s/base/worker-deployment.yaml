@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scholarscout-worker-crawler
+  labels:
+    app: scholarscout
+    component: worker-crawler
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: scholarscout
+      component: worker-crawler
+  template:
+    metadata:
+      labels:
+        app: scholarscout
+        component: worker-crawler
+    spec:
+      securityContext:
+        runAsUser: 1000
+      containers:
+        - name: worker
+          image: scholarscout/worker:latest
+          command:
+            - celery
+            - -A
+            - scholarscout.contexts.crawler.workers.celery_app
+            - worker
+            - --queues=crawl.high,crawl.normal,crawl.low
+            - --concurrency=8
+            - --loglevel=info
+            - --hostname=crawler@%h
+          envFrom:
+            - secretRef:
+                name: scholarscout-secrets
+            - configMapRef:
+                name: scholarscout-config
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "4Gi"
+          livenessProbe:
+            exec:
+              command:
+                - celery
+                - -A
+                - scholarscout.contexts.crawler.workers.celery_app
+                - inspect
+                - ping
+                - -d
+                - "crawler@$(hostname)"
+            initialDelaySeconds: 60
+            periodSeconds: 60
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scholarscout-worker-extraction
+  labels:
+    app: scholarscout
+    component: worker-extraction
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: scholarscout
+      component: worker-extraction
+  template:
+    metadata:
+      labels:
+        app: scholarscout
+        component: worker-extraction
+    spec:
+      containers:
+        - name: worker
+          image: scholarscout/worker:latest
+          command:
+            - celery
+            - -A
+            - scholarscout.contexts.crawler.workers.celery_app
+            - worker
+            - --queues=extraction.high,extraction.normal
+            - --concurrency=4
+            - --loglevel=info
+          envFrom:
+            - secretRef:
+                name: scholarscout-secrets
+            - configMapRef:
+                name: scholarscout-config
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "2Gi"   # LLM responses can be large
+            limits:
+              cpu: "2000m"
+              memory: "8Gi"

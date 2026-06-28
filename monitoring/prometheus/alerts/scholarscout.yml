@@ -1,0 +1,70 @@
+groups:
+  - name: scholarscout.crawl
+    rules:
+      - alert: CrawlQueueDepthHigh
+        expr: scholarscout_crawl_queue_depth > 50000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Crawl queue depth is high ({{ $value }} URLs)"
+          description: "The crawl queue has more than 50,000 pending URLs for 5+ minutes."
+
+      - alert: CrawlSuccessRateLow
+        expr: |
+          rate(scholarscout_crawl_requests_total{status="200"}[5m]) /
+          rate(scholarscout_crawl_requests_total[5m]) < 0.90
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Crawl success rate below 90%"
+          description: "Only {{ $value | humanizePercentage }} of crawl requests succeed."
+
+      - alert: NoCrawlsInLastHour
+        expr: rate(scholarscout_pages_crawled_total[1h]) == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No pages crawled in the last hour"
+
+  - name: scholarscout.search
+    rules:
+      - alert: SearchLatencyHigh
+        expr: histogram_quantile(0.99, rate(scholarscout_search_latency_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Search p99 latency is {{ $value | humanizeDuration }}"
+
+      - alert: SearchLatencyCritical
+        expr: histogram_quantile(0.99, rate(scholarscout_search_latency_seconds_bucket[5m])) > 2.0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Search p99 latency exceeded 2 seconds"
+
+  - name: scholarscout.llm
+    rules:
+      - alert: LLMCostBudgetWarning
+        expr: increase(scholarscout_llm_cost_usd_total[24h]) > 400
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM spend approaching daily budget (${{ $value | humanize }})"
+
+  - name: scholarscout.data_freshness
+    rules:
+      - alert: StaleOpportunities
+        expr: |
+          (count(time() - (scholarscout_opportunities_freshness_hours_bucket{le="24"} > 0)) /
+           count(scholarscout_opportunities_total{status="active"})) < 0.7
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Less than 70% of opportunities verified in the last 24 hours"
