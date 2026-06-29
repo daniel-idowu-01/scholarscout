@@ -34,7 +34,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from opensearchpy import AsyncOpenSearch, RequestsHttpConnection
+from opensearchpy import AsyncOpenSearch
 from opensearchpy.exceptions import NotFoundError
 
 from scholarscout.config import settings
@@ -133,7 +133,7 @@ _OPPORTUNITY_INDEX_CONFIG: dict[str, Any] = {
             "tuition_covered": {"type": "boolean"},
             "deadline": {
                 "type": "date",
-                "format": "yyyy-MM-dd||rolling",
+                "format": "yyyy-MM-dd",
                 "ignore_malformed": True,
             },
             "gpa_minimum": {"type": "float"},
@@ -162,7 +162,6 @@ class OpenSearchClient:
             use_ssl="https" in cfg.url,
             verify_certs=cfg.verify_certs,
             ssl_show_warn=False,
-            connection_class=RequestsHttpConnection,
             timeout=30,
             max_retries=3,
             retry_on_timeout=True,

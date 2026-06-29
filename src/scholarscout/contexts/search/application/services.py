@@ -186,7 +186,6 @@ class SearchService:
             "bool": {
                 "should": [
                     {"range": {"deadline": {"gte": now_str}}},
-                    {"term": {"deadline": "rolling"}},
                     {"bool": {"must_not": {"exists": {"field": "deadline"}}}},
                 ]
             }
