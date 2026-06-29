@@ -279,6 +279,21 @@ services:
     ports:
       - "5555:5555"
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev
+    environment:
+      NEXT_PUBLIC_API_URL: http://api:8000
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
+
 volumes:
   postgres_data:
   redis_data:
