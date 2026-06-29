@@ -9,26 +9,30 @@ import type { Opportunity } from '@/types'
 
 function formatDeadline(d: string | null) {
   if (!d) return null
-  if (d.toLowerCase() === 'rolling') return { label: 'Rolling', urgent: false }
+  if (d.toLowerCase() === 'rolling') return { label: 'Rolling', urgent: false, days: null }
   const date = new Date(d)
-  if (isNaN(date.getTime())) return { label: d, urgent: false }
+  if (isNaN(date.getTime())) return { label: d, urgent: false, days: null }
   const days = Math.ceil((date.getTime() - Date.now()) / 86_400_000)
-  if (days < 0) return { label: 'Deadline passed', urgent: false }
+  if (days < 0) return { label: 'Deadline passed', urgent: false, days }
   return {
     label: date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
     urgent: days <= 30,
-    daysLeft: days,
+    days,
   }
 }
 
-function formatStipend(amount: number | null, currency = 'USD') {
-  if (!amount) return null
+function InfoCard({ label, children, accent }: { label: string; children: React.ReactNode; accent?: boolean }) {
   return (
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: 0,
-    }).format(amount) + '/year'
+    <div
+      className="p-4"
+      style={{
+        background: accent ? 'rgba(94,189,138,0.05)' : '#1c1a16',
+        border: `1px solid ${accent ? 'rgba(94,189,138,0.2)' : 'var(--border-dim)'}`,
+      }}
+    >
+      <p className="font-mono text-xs text-fog tracking-widest uppercase mb-1">{label}</p>
+      <div className={`text-sm font-medium ${accent ? 'text-mint' : 'text-cream'}`}>{children}</div>
+    </div>
   )
 }
 
@@ -47,134 +51,96 @@ export default function OpportunityDetailPage() {
       .finally(() => setLoading(false))
   }, [id])
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-24">
-        <Spinner />
-      </div>
-    )
-  }
+  if (loading) return <div className="flex justify-center py-24"><Spinner /></div>
 
   if (error || !opp) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-24 text-center">
-        <p className="text-slate-500">{error ?? 'Opportunity not found'}</p>
-        <button onClick={() => router.back()} className="mt-4 text-sm text-indigo-600 hover:underline">
-          Go back
+        <p className="font-mono text-sm text-mist">{error ?? 'Opportunity not found'}</p>
+        <button onClick={() => router.back()} className="mt-4 font-mono text-xs text-gold hover:text-gold-bright transition-colors">
+          ← go back
         </button>
       </div>
     )
   }
 
   const deadline = formatDeadline(opp.deadline)
-  const stipend = formatStipend(opp.stipend_amount, opp.stipend_currency)
+  const stipend = opp.stipend_amount
+    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: opp.stipend_currency || 'USD', maximumFractionDigits: 0 }).format(opp.stipend_amount) + '/year'
+    : null
   const languageEntries = Object.entries(opp.language_requirements ?? {})
 
   return (
     <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <button
         onClick={() => router.back()}
-        className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-6 transition-colors"
+        className="flex items-center gap-2 font-mono text-xs text-fog hover:text-mist mb-8 transition-colors tracking-wide"
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        Back to results
+        ← back to results
       </button>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-8">
+      <div
+        className="bg-surface p-8 animate-fade-in"
+        style={{ border: '1px solid var(--border-dim)', animationFillMode: 'forwards' }}
+      >
         {/* Header */}
-        <div className="flex items-start justify-between gap-6 flex-wrap">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold text-slate-900 leading-snug">{opp.title}</h1>
-          </div>
+        <div className="flex items-start justify-between gap-6 flex-wrap mb-5">
+          <h1 className="font-display text-2xl sm:text-3xl text-cream leading-tight flex-1 min-w-0">
+            {opp.title}
+          </h1>
           {opp.source_url && (
             <a
               href={opp.source_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="shrink-0 px-6 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
+              className="shrink-0 px-6 py-2.5 bg-gold text-bg text-sm font-bold tracking-wide hover:bg-gold-bright transition-colors"
             >
-              Apply / Visit
+              Apply / Visit ↗
             </a>
           )}
         </div>
 
         {/* Badges */}
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5 mb-7">
           {opp.degree_level && <Badge label={opp.degree_level} variant="degree" />}
           {opp.funding_type && <Badge label={opp.funding_type} variant="funding" />}
-          {opp.departments.map(d => (
-            <Badge key={d} label={d} variant="tag" />
-          ))}
+          {opp.departments.map(d => <Badge key={d} label={d} variant="tag" />)}
         </div>
 
-        {/* Key info cards */}
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {stipend && (
-            <div className="col-span-2 sm:col-span-1 bg-emerald-50 rounded-xl p-4">
-              <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Stipend</p>
-              <p className="mt-1 text-lg font-bold text-emerald-700">{stipend}</p>
-            </div>
-          )}
+        {/* Key info grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-8">
+          {stipend && <InfoCard label="Stipend" accent>{stipend}</InfoCard>}
           {deadline && (
-            <div className={`col-span-2 sm:col-span-1 rounded-xl p-4 ${deadline.urgent ? 'bg-amber-50' : 'bg-slate-50'}`}>
-              <p className={`text-xs font-semibold uppercase tracking-wide ${deadline.urgent ? 'text-amber-600' : 'text-slate-500'}`}>
-                Deadline{deadline.urgent && deadline.daysLeft !== undefined ? ` · ${deadline.daysLeft}d` : ''}
-              </p>
-              <p className={`mt-1 text-sm font-semibold ${deadline.urgent ? 'text-amber-700' : 'text-slate-800'}`}>
-                {deadline.label}
-              </p>
-            </div>
+            <InfoCard label={deadline.days !== null && deadline.days <= 30 ? `Deadline · ${deadline.days}d` : 'Deadline'}>
+              <span className={deadline.urgent ? 'text-[#fbbf24]' : 'text-cream'}>{deadline.label}</span>
+            </InfoCard>
           )}
-          {opp.duration_years != null && (
-            <div className="bg-slate-50 rounded-xl p-4">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Duration</p>
-              <p className="mt-1 text-sm font-semibold text-slate-800">{opp.duration_years} years</p>
-            </div>
-          )}
-          {opp.gpa_minimum != null && (
-            <div className="bg-slate-50 rounded-xl p-4">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Min. GPA</p>
-              <p className="mt-1 text-sm font-semibold text-slate-800">{opp.gpa_minimum}</p>
-            </div>
-          )}
+          {opp.duration_years != null && <InfoCard label="Duration">{opp.duration_years} years</InfoCard>}
+          {opp.gpa_minimum != null && <InfoCard label="Min. GPA">{opp.gpa_minimum}</InfoCard>}
           {opp.tuition_covered != null && (
-            <div className="bg-slate-50 rounded-xl p-4">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tuition</p>
-              <p className="mt-1 text-sm font-semibold text-slate-800">
-                {opp.tuition_covered ? 'Covered' : 'Not covered'}
-              </p>
-            </div>
+            <InfoCard label="Tuition">{opp.tuition_covered ? 'Covered' : 'Not covered'}</InfoCard>
           )}
         </div>
+
+        {/* Divider */}
+        <div className="h-px w-full mb-8" style={{ background: 'var(--border-dim)' }} />
 
         {/* Description */}
         {opp.description && (
-          <section className="mt-8">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Description</h2>
-            <p className="text-slate-700 leading-relaxed">{opp.description}</p>
+          <section className="mb-8">
+            <p className="font-mono text-xs text-fog tracking-widest uppercase mb-3">Description</p>
+            <p className="text-mist leading-relaxed">{opp.description}</p>
           </section>
         )}
 
         {/* Requirements */}
         {opp.requirements.length > 0 && (
-          <section className="mt-8">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Requirements</h2>
+          <section className="mb-8">
+            <p className="font-mono text-xs text-fog tracking-widest uppercase mb-3">Requirements</p>
             <ul className="space-y-2">
               {opp.requirements.map((r, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
-                  <svg
-                    className="w-4 h-4 text-indigo-400 mt-0.5 shrink-0"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                <li key={i} className="flex items-start gap-3 text-sm text-mist">
+                  <span className="text-gold mt-0.5 shrink-0 font-mono">›</span>
                   {r}
                 </li>
               ))}
@@ -184,68 +150,54 @@ export default function OpportunityDetailPage() {
 
         {/* Language requirements */}
         {languageEntries.length > 0 && (
-          <section className="mt-8">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-              Language Requirements
-            </h2>
-            <div className="flex flex-wrap gap-3">
+          <section className="mb-8">
+            <p className="font-mono text-xs text-fog tracking-widest uppercase mb-3">Language Requirements</p>
+            <div className="flex flex-wrap gap-2">
               {languageEntries.map(([lang, score]) => (
-                <div key={lang} className="bg-slate-50 rounded-lg px-3 py-2">
-                  <span className="text-sm font-semibold text-slate-700">{lang.toUpperCase()}</span>
-                  <span className="text-sm text-slate-500 ml-1.5">{score}</span>
+                <div
+                  key={lang}
+                  className="px-3 py-1.5"
+                  style={{ border: '1px solid var(--border)' }}
+                >
+                  <span className="font-mono text-xs font-medium text-cream">{lang.toUpperCase()}</span>
+                  <span className="font-mono text-xs text-mist ml-2">{score}</span>
                 </div>
               ))}
             </div>
           </section>
         )}
 
-        {/* Citizenship restrictions */}
+        {/* Citizenship */}
         {opp.citizenship_restrictions && opp.citizenship_restrictions.length > 0 && (
-          <section className="mt-8">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-              Citizenship
-            </h2>
-            <p className="text-sm text-slate-700">{opp.citizenship_restrictions.join(', ')}</p>
+          <section className="mb-8">
+            <p className="font-mono text-xs text-fog tracking-widest uppercase mb-3">Citizenship</p>
+            <p className="font-mono text-xs text-mist">{opp.citizenship_restrictions.join(', ')}</p>
           </section>
         )}
 
         {/* Tags */}
         {opp.tags.length > 0 && (
-          <section className="mt-8">
-            <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Tags</h2>
-            <div className="flex flex-wrap gap-2">
-              {opp.tags.map(t => (
-                <Badge key={t} label={t} variant="tag" />
-              ))}
+          <section className="mb-8">
+            <p className="font-mono text-xs text-fog tracking-widest uppercase mb-3">Tags</p>
+            <div className="flex flex-wrap gap-1.5">
+              {opp.tags.map(t => <Badge key={t} label={t} variant="tag" />)}
             </div>
           </section>
         )}
 
         {/* Footer */}
-        <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 gap-4 flex-wrap">
-          <span>
-            Last verified:{' '}
-            {new Date(opp.last_verified_at).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
+        <div className="pt-6 flex items-center justify-between gap-4 flex-wrap" style={{ borderTop: '1px solid var(--border-dim)' }}>
+          <span className="font-mono text-xs text-fog">
+            Verified {new Date(opp.last_verified_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
           </span>
           {opp.source_url && (() => {
             try {
               return (
-                <a
-                  href={opp.source_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-indigo-400 hover:text-indigo-600 truncate max-w-xs transition-colors"
-                >
-                  {new URL(opp.source_url).hostname}
+                <a href={opp.source_url} target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-gold hover:text-gold-bright transition-colors truncate max-w-xs">
+                  {new URL(opp.source_url).hostname} ↗
                 </a>
               )
-            } catch {
-              return null
-            }
+            } catch { return null }
           })()}
         </div>
       </div>

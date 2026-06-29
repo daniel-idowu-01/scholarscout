@@ -20,10 +20,16 @@ const FUNDING_OPTIONS = [
 
 const SORT_OPTIONS = [
   { value: 'relevance', label: 'Relevance' },
-  { value: 'deadline', label: 'Deadline (soonest)' },
-  { value: 'stipend', label: 'Stipend (highest)' },
-  { value: 'freshness', label: 'Newest first' },
+  { value: 'deadline', label: 'Deadline' },
+  { value: 'stipend', label: 'Stipend' },
+  { value: 'freshness', label: 'Newest' },
 ]
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="font-mono text-xs text-fog tracking-widest uppercase mb-3">{children}</p>
+  )
+}
 
 export default function FilterPanel({ facets }: { facets?: SearchFacets }) {
   const router = useRouter()
@@ -33,11 +39,8 @@ export default function FilterPanel({ facets }: { facets?: SearchFacets }) {
   const update = useCallback(
     (key: string, value: string | null) => {
       const params = new URLSearchParams(searchParams.toString())
-      if (!value) {
-        params.delete(key)
-      } else {
-        params.set(key, value)
-      }
+      if (!value) params.delete(key)
+      else params.set(key, value)
       params.delete('page')
       router.push(`${pathname}?${params.toString()}`)
     },
@@ -45,99 +48,117 @@ export default function FilterPanel({ facets }: { facets?: SearchFacets }) {
   )
 
   const get = (key: string) => searchParams.get(key) ?? ''
-
   const hasFilters = ['degree_level', 'funding_type', 'country', 'min_stipend'].some(k => get(k))
 
+  const radioStyle = (active: boolean) =>
+    `flex items-center gap-2.5 cursor-pointer group py-1 ${active ? 'text-gold' : 'text-mist hover:text-cream'} transition-colors`
+
   return (
-    <aside className="space-y-6">
+    <aside className="space-y-7">
       <div>
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Sort by</p>
+        <SectionLabel>Sort by</SectionLabel>
         <select
           value={get('sort_by') || 'relevance'}
           onChange={e => update('sort_by', e.target.value)}
-          className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          className="w-full font-mono text-xs bg-surface text-cream px-3 py-2 focus:outline-none appearance-none cursor-pointer"
+          style={{ border: '1px solid var(--border)' }}
         >
           {SORT_OPTIONS.map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o.value} value={o.value} className="bg-elevated">{o.label}</option>
           ))}
         </select>
       </div>
 
       <div>
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Degree Level</p>
-        <div className="space-y-2">
+        <SectionLabel>Degree Level</SectionLabel>
+        <div className="space-y-0.5">
           {DEGREE_OPTIONS.map(o => {
             const count = facets?.degree_levels.find(f => f.key === o.value)?.count
+            const active = get('degree_level') === o.value
             return (
-              <label key={o.value} className="flex items-center gap-2 cursor-pointer group">
+              <label key={o.value} className={radioStyle(active)}>
                 <input
                   type="radio"
                   name="degree_level"
                   value={o.value}
-                  checked={get('degree_level') === o.value}
+                  checked={active}
                   onChange={() => update('degree_level', o.value)}
-                  className="accent-indigo-600"
+                  className="hidden"
                 />
-                <span className="text-sm text-slate-700 flex-1">{o.label}</span>
+                <span
+                  className={`w-3 h-3 border flex items-center justify-center shrink-0 transition-colors ${
+                    active ? 'border-gold bg-gold' : 'border-fog group-hover:border-mist'
+                  }`}
+                >
+                  {active && <span className="w-1.5 h-1.5 bg-bg block" />}
+                </span>
+                <span className="font-mono text-xs flex-1">{o.label}</span>
                 {count !== undefined && (
-                  <span className="text-xs text-slate-400">{count}</span>
+                  <span className="font-mono text-xs text-fog">{count}</span>
                 )}
               </label>
             )
           })}
           {get('degree_level') && (
-            <button onClick={() => update('degree_level', null)} className="text-xs text-indigo-500 hover:underline">
-              Clear
+            <button onClick={() => update('degree_level', null)} className="font-mono text-xs text-gold hover:text-gold-bright mt-1 transition-colors">
+              × clear
             </button>
           )}
         </div>
       </div>
 
       <div>
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Funding Type</p>
-        <div className="space-y-2">
+        <SectionLabel>Funding Type</SectionLabel>
+        <div className="space-y-0.5">
           {FUNDING_OPTIONS.map(o => {
             const count = facets?.funding_types.find(f => f.key === o.value)?.count
+            const active = get('funding_type') === o.value
             return (
-              <label key={o.value} className="flex items-center gap-2 cursor-pointer">
+              <label key={o.value} className={radioStyle(active)}>
                 <input
                   type="radio"
                   name="funding_type"
                   value={o.value}
-                  checked={get('funding_type') === o.value}
+                  checked={active}
                   onChange={() => update('funding_type', o.value)}
-                  className="accent-indigo-600"
+                  className="hidden"
                 />
-                <span className="text-sm text-slate-700 flex-1">{o.label}</span>
+                <span
+                  className={`w-3 h-3 border flex items-center justify-center shrink-0 transition-colors ${
+                    active ? 'border-gold bg-gold' : 'border-fog group-hover:border-mist'
+                  }`}
+                >
+                  {active && <span className="w-1.5 h-1.5 bg-bg block" />}
+                </span>
+                <span className="font-mono text-xs flex-1">{o.label}</span>
                 {count !== undefined && (
-                  <span className="text-xs text-slate-400">{count}</span>
+                  <span className="font-mono text-xs text-fog">{count}</span>
                 )}
               </label>
             )
           })}
           {get('funding_type') && (
-            <button onClick={() => update('funding_type', null)} className="text-xs text-indigo-500 hover:underline">
-              Clear
+            <button onClick={() => update('funding_type', null)} className="font-mono text-xs text-gold hover:text-gold-bright mt-1 transition-colors">
+              × clear
             </button>
           )}
         </div>
       </div>
 
       <div>
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Country</p>
+        <SectionLabel>Country</SectionLabel>
         <input
           type="text"
           placeholder="e.g. Germany"
           value={get('country')}
           onChange={e => update('country', e.target.value || null)}
-          className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 placeholder-slate-400 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          className="w-full font-mono text-xs bg-surface text-cream px-3 py-2 focus:outline-none placeholder:text-fog"
+          style={{ border: '1px solid var(--border)' }}
         />
       </div>
 
       <div>
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-          Min. Stipend (USD/yr)
-        </p>
+        <SectionLabel>Min. Stipend (USD)</SectionLabel>
         <input
           type="number"
           placeholder="e.g. 20000"
@@ -145,7 +166,8 @@ export default function FilterPanel({ facets }: { facets?: SearchFacets }) {
           step={5000}
           value={get('min_stipend')}
           onChange={e => update('min_stipend', e.target.value || null)}
-          className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 placeholder-slate-400 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          className="w-full font-mono text-xs bg-surface text-cream px-3 py-2 focus:outline-none placeholder:text-fog"
+          style={{ border: '1px solid var(--border)' }}
         />
       </div>
 
@@ -158,9 +180,9 @@ export default function FilterPanel({ facets }: { facets?: SearchFacets }) {
             )
             router.push(`${pathname}?${params.toString()}`)
           }}
-          className="w-full text-sm py-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors"
+          className="font-mono text-xs text-fog hover:text-mist transition-colors tracking-wide"
         >
-          Clear all filters
+          × clear all filters
         </button>
       )}
     </aside>

@@ -1,22 +1,22 @@
-const DEGREE_COLORS: Record<string, string> = {
-  phd: 'bg-purple-100 text-purple-700',
-  masters: 'bg-blue-100 text-blue-700',
-  master: 'bg-blue-100 text-blue-700',
-  bachelor: 'bg-cyan-100 text-cyan-700',
-  postdoc: 'bg-violet-100 text-violet-700',
-  undergraduate: 'bg-sky-100 text-sky-700',
+const DEGREE: Record<string, string> = {
+  phd: 'bg-[#1e1428] text-[#c084fc] border-[#6d28a0]',
+  masters: 'bg-[#0f1e2e] text-[#60a5fa] border-[#1d4e8a]',
+  master: 'bg-[#0f1e2e] text-[#60a5fa] border-[#1d4e8a]',
+  bachelor: 'bg-[#0e2020] text-[#34d399] border-[#065f46]',
+  postdoc: 'bg-[#1a1020] text-[#a78bfa] border-[#5b21b6]',
+  undergraduate: 'bg-[#0e2020] text-[#34d399] border-[#065f46]',
 }
 
-const FUNDING_COLORS: Record<string, string> = {
-  fully_funded: 'bg-emerald-100 text-emerald-700',
-  partial: 'bg-amber-100 text-amber-700',
-  tuition_only: 'bg-sky-100 text-sky-700',
-  stipend_only: 'bg-teal-100 text-teal-700',
+const FUNDING: Record<string, string> = {
+  fully_funded: 'bg-[#0e1e14] text-[#4ade80] border-[#14532d]',
+  partial: 'bg-[#1e1800] text-[#fbbf24] border-[#78350f]',
+  tuition_only: 'bg-[#0f1e2e] text-[#38bdf8] border-[#0369a1]',
+  stipend_only: 'bg-[#0e1e1a] text-[#2dd4bf] border-[#134e4a]',
 }
 
 const FUNDING_LABELS: Record<string, string> = {
   fully_funded: 'Fully Funded',
-  partial: 'Partial Funding',
+  partial: 'Partial',
   tuition_only: 'Tuition Only',
   stipend_only: 'Stipend Only',
 }
@@ -27,20 +27,25 @@ interface BadgeProps {
 }
 
 export default function Badge({ label, variant = 'tag' }: BadgeProps) {
-  const base = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium'
+  const base = 'inline-flex items-center px-2 py-0.5 text-xs font-mono border'
   const key = label.toLowerCase()
 
   if (variant === 'degree') {
-    const color = DEGREE_COLORS[key] ?? 'bg-slate-100 text-slate-600'
-    const display = label.charAt(0).toUpperCase() + label.slice(1)
-    return <span className={`${base} ${color}`}>{display}</span>
+    const cls = DEGREE[key] ?? 'bg-[#1a1814] text-mist border-[var(--border)]'
+    return <span className={`${base} ${cls}`}>{label.toUpperCase()}</span>
   }
 
   if (variant === 'funding') {
-    const color = FUNDING_COLORS[key] ?? 'bg-slate-100 text-slate-600'
-    const display = FUNDING_LABELS[key] ?? label
-    return <span className={`${base} ${color}`}>{display}</span>
+    const cls = FUNDING[key] ?? 'bg-[#1a1814] text-mist border-[var(--border)]'
+    return <span className={`${base} ${cls}`}>{FUNDING_LABELS[key] ?? label}</span>
   }
 
-  return <span className={`${base} bg-slate-100 text-slate-600`}>{label}</span>
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 font-mono text-xs text-fog"
+      style={{ border: '1px solid var(--border-dim)' }}
+    >
+      {label}
+    </span>
+  )
 }

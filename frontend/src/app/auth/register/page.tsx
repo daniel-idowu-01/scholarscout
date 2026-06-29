@@ -1,10 +1,24 @@
 'use client'
 
-import { useState, FormEvent } from 'react'
+import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { authApi } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
+
+function Field({ label, optional, children }: { label: string; optional?: boolean; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="font-mono text-xs text-fog tracking-widest uppercase block mb-2">
+        {label}{optional && <span className="text-fog normal-case ml-1">(optional)</span>}
+      </label>
+      {children}
+    </div>
+  )
+}
+
+const inputCls = 'w-full bg-surface text-cream text-sm px-4 py-3 focus:outline-none placeholder:text-fog'
+const inputStyle = { border: '1px solid var(--border)' }
 
 export default function RegisterPage() {
   const { login } = useAuth()
@@ -15,12 +29,9 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters')
-      return
-    }
+    if (password.length < 8) { setError('Password must be at least 8 characters'); return }
     setError(null)
     setLoading(true)
     try {
@@ -35,75 +46,50 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-[72vh] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-slate-900">Create your account</h1>
-          <p className="mt-2 text-sm text-slate-500">Start finding funded graduate opportunities</p>
+    <div className="min-h-[75vh] flex items-center justify-center px-4 py-12 bg-dot-grid">
+      <div
+        className="w-full max-w-sm bg-surface p-8 animate-fade-up"
+        style={{ border: '1px solid var(--border)', animationFillMode: 'forwards' }}
+      >
+        <div className="mb-8">
+          <h1 className="font-display text-2xl text-cream mb-1">Create your account</h1>
+          <p className="font-mono text-xs text-fog tracking-wide">Start finding funded opportunities</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
+            <div
+              className="font-mono text-xs text-[#f87171] px-4 py-3"
+              style={{ border: '1px solid rgba(248,113,113,0.2)', background: 'rgba(248,113,113,0.05)' }}
+            >
               {error}
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Name <span className="text-slate-400 font-normal">(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              autoComplete="name"
-              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
-              placeholder="Your name"
-            />
-          </div>
+          <Field label="Name" optional>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} autoComplete="name" placeholder="Your name" className={inputCls} style={inputStyle} />
+          </Field>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
-              placeholder="you@university.edu"
-            />
-          </div>
+          <Field label="Email">
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email" placeholder="you@university.edu" className={inputCls} style={inputStyle} />
+          </Field>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              minLength={8}
-              autoComplete="new-password"
-              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
-              placeholder="Min. 8 characters"
-            />
-          </div>
+          <Field label="Password">
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} autoComplete="new-password" placeholder="Min. 8 characters" className={inputCls} style={inputStyle} />
+          </Field>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+            className="w-full py-3 bg-gold text-bg text-sm font-bold tracking-wide hover:bg-gold-bright disabled:opacity-50 transition-colors"
           >
             {loading ? 'Creating account...' : 'Create account'}
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-500">
+        <p className="mt-6 font-mono text-xs text-fog text-center">
           Already have an account?{' '}
-          <Link href="/auth/login" className="text-indigo-600 font-medium hover:underline">
-            Sign in
-          </Link>
+          <Link href="/auth/login" className="text-gold hover:text-gold-bright transition-colors">Sign in</Link>
         </p>
       </div>
     </div>

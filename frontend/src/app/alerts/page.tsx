@@ -23,44 +23,51 @@ export default function AlertsPage() {
 
   return (
     <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Search Alerts</h1>
-        <Link
-          href="/search"
-          className="text-sm font-medium text-indigo-600 hover:underline"
-        >
+      <div className="flex items-baseline justify-between mb-8">
+        <h1 className="font-display text-3xl text-cream">Search Alerts</h1>
+        <Link href="/search" className="font-mono text-xs text-gold hover:text-gold-bright transition-colors">
           + New search
         </Link>
       </div>
 
-      <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-5 mb-6">
-        <p className="text-sm font-semibold text-indigo-700">Email alerts are coming soon</p>
-        <p className="text-xs text-indigo-500 mt-1 leading-relaxed">
-          Save any search and receive daily or weekly email digests when new matching
-          opportunities are posted. For now, bookmark the search URL to revisit it.
+      {/* Notice */}
+      <div
+        className="px-5 py-4 mb-6 font-mono"
+        style={{ border: '1px solid rgba(212,168,83,0.2)', background: 'rgba(212,168,83,0.04)' }}
+      >
+        <p className="text-xs text-gold mb-1">Email alerts — coming soon</p>
+        <p className="text-xs text-fog leading-relaxed">
+          Save searches and receive daily or weekly digests when new matching opportunities appear.
+          For now, bookmark the search URL to revisit your query.
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100">
-          <h2 className="text-sm font-semibold text-slate-700">Preview — Example alerts</h2>
+      {/* Preview list */}
+      <div className="bg-surface" style={{ border: '1px solid var(--border-dim)' }}>
+        <div className="px-5 py-3" style={{ borderBottom: '1px solid var(--border-dim)' }}>
+          <p className="font-mono text-xs text-fog tracking-widest uppercase">Preview — Example alerts</p>
         </div>
-        <div className="divide-y divide-slate-100">
-          {EXAMPLES.map(a => (
-            <div key={a.query} className="flex items-center justify-between px-6 py-4">
-              <div>
-                <p className="text-sm font-medium text-slate-800">{a.query}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{a.filters}</p>
-              </div>
-              <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full shrink-0 ml-4">
-                {a.count} new
-              </span>
+        {EXAMPLES.map((a, i) => (
+          <div
+            key={a.query}
+            className="flex items-center justify-between px-5 py-4"
+            style={{ borderBottom: i < EXAMPLES.length - 1 ? '1px solid var(--border-dim)' : 'none' }}
+          >
+            <div>
+              <p className="text-sm text-cream font-medium">{a.query}</p>
+              <p className="font-mono text-xs text-fog mt-0.5">{a.filters}</p>
             </div>
-          ))}
-        </div>
-        <div className="px-6 py-4 border-t border-slate-100 text-center">
-          <Link href="/search" className="text-sm text-indigo-600 hover:underline">
-            Go to search to create an alert
+            <span
+              className="font-mono text-xs text-gold px-2.5 py-1 shrink-0 ml-4"
+              style={{ border: '1px solid var(--border-bright)' }}
+            >
+              {a.count} new
+            </span>
+          </div>
+        ))}
+        <div className="px-5 py-3 text-center" style={{ borderTop: '1px solid var(--border-dim)' }}>
+          <Link href="/search" className="font-mono text-xs text-mist hover:text-gold transition-colors">
+            Go to search to create an alert →
           </Link>
         </div>
       </div>

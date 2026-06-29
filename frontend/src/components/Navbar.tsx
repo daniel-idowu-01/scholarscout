@@ -16,54 +16,86 @@ export default function Navbar() {
     router.push('/')
   }
 
-  const link = (href: string, label: string) => (
-    <Link
-      href={href}
-      className={`text-sm font-medium transition-colors ${
-        pathname.startsWith(href) && href !== '/'
-          ? 'text-indigo-600'
-          : 'text-slate-600 hover:text-slate-900'
-      }`}
-    >
-      {label}
-    </Link>
-  )
+  const isActive = (href: string) => pathname.startsWith(href) && href !== '/'
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-        <Link href="/" className="flex items-center gap-2 shrink-0">
-          <svg className="w-6 h-6 text-indigo-600" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z" />
-          </svg>
-          <span className="font-bold text-slate-900 text-lg">ScholarScout</span>
+    <header
+      className="sticky top-0 z-50"
+      style={{
+        background: 'rgba(18, 16, 14, 0.85)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid var(--border-dim)',
+      }}
+    >
+      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4">
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+          <div className="w-6 h-6 flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-gold">
+              <path
+                d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          <span className="font-display font-semibold text-cream text-base tracking-wide">
+            Scholar<span className="text-gold">Scout</span>
+          </span>
         </Link>
 
-        <div className="hidden md:flex items-center gap-6">
-          {link('/search', 'Search')}
+        {/* Desktop nav */}
+        <div className="hidden md:flex items-center gap-8">
+          {[{ href: '/search', label: 'Search' }].map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              className={`text-sm tracking-wide transition-colors font-medium ${
+                isActive(href) ? 'text-gold' : 'text-mist hover:text-cream'
+              }`}
+              style={isActive(href) ? { textShadow: '0 0 20px rgba(212,168,83,0.4)' } : {}}
+            >
+              {label}
+            </Link>
+          ))}
         </div>
 
-        <div className="hidden md:flex items-center gap-3">
+        {/* Auth */}
+        <div className="hidden md:flex items-center gap-4">
           {isAuthenticated ? (
             <>
-              <span className="text-xs text-slate-400 truncate max-w-[160px]">{userEmail}</span>
-              {link('/profile', 'Profile')}
-              {link('/alerts', 'Alerts')}
+              <span className="font-mono text-xs text-fog truncate max-w-[160px]">{userEmail}</span>
+              {[
+                { href: '/profile', label: 'Profile' },
+                { href: '/alerts', label: 'Alerts' },
+              ].map(({ href, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="text-sm text-mist hover:text-cream transition-colors"
+                >
+                  {label}
+                </Link>
+              ))}
               <button
                 onClick={handleLogout}
-                className="text-sm font-medium text-red-500 hover:text-red-700 transition-colors"
+                className="text-sm text-fog hover:text-cream transition-colors"
               >
                 Logout
               </button>
             </>
           ) : (
             <>
-              <Link href="/auth/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+              <Link href="/auth/login" className="text-sm text-mist hover:text-cream transition-colors">
                 Log in
               </Link>
               <Link
                 href="/auth/register"
-                className="text-sm font-semibold px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                className="text-sm font-semibold px-4 py-1.5 text-bg bg-gold hover:bg-gold-bright transition-colors"
+                style={{ letterSpacing: '0.02em' }}
               >
                 Get started
               </Link>
@@ -71,34 +103,39 @@ export default function Navbar() {
           )}
         </div>
 
+        {/* Mobile toggle */}
         <button
-          className="md:hidden p-2 text-slate-500 hover:text-slate-700"
+          className="md:hidden p-1.5 text-mist hover:text-cream"
           onClick={() => setOpen(!open)}
           aria-label="Toggle menu"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {open ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
             ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
             )}
           </svg>
         </button>
       </nav>
 
+      {/* Mobile menu */}
       {open && (
-        <div className="md:hidden border-t border-slate-100 bg-white px-4 py-4 flex flex-col gap-3">
-          <Link href="/search" className="text-sm text-slate-700" onClick={() => setOpen(false)}>Search</Link>
+        <div
+          className="md:hidden px-4 py-4 flex flex-col gap-3"
+          style={{ borderTop: '1px solid var(--border-dim)' }}
+        >
+          <Link href="/search" className="text-sm text-cream" onClick={() => setOpen(false)}>Search</Link>
           {isAuthenticated ? (
             <>
-              <Link href="/profile" className="text-sm text-slate-700" onClick={() => setOpen(false)}>Profile</Link>
-              <Link href="/alerts" className="text-sm text-slate-700" onClick={() => setOpen(false)}>Alerts</Link>
-              <button onClick={() => { handleLogout(); setOpen(false) }} className="text-sm text-red-500 text-left">Logout</button>
+              <Link href="/profile" className="text-sm text-mist" onClick={() => setOpen(false)}>Profile</Link>
+              <Link href="/alerts" className="text-sm text-mist" onClick={() => setOpen(false)}>Alerts</Link>
+              <button onClick={() => { handleLogout(); setOpen(false) }} className="text-sm text-fog text-left">Logout</button>
             </>
           ) : (
             <>
-              <Link href="/auth/login" className="text-sm text-slate-700" onClick={() => setOpen(false)}>Log in</Link>
-              <Link href="/auth/register" className="text-sm font-medium text-indigo-600" onClick={() => setOpen(false)}>Get started</Link>
+              <Link href="/auth/login" className="text-sm text-mist" onClick={() => setOpen(false)}>Log in</Link>
+              <Link href="/auth/register" className="text-sm text-gold font-medium" onClick={() => setOpen(false)}>Get started</Link>
             </>
           )}
         </div>

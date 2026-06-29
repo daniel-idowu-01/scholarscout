@@ -3,11 +3,120 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --border: rgba(212, 168, 83, 0.1);
+    --border-bright: rgba(212, 168, 83, 0.28);
+    --border-dim: rgba(232, 220, 200, 0.06);
+    --gold-glow: rgba(212, 168, 83, 0.07);
+  }
+
   * {
     box-sizing: border-box;
   }
+
   body {
+    background-color: #12100e;
+    color: #e8dcc8;
+    font-family: var(--font-mulish, system-ui, sans-serif);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  ::selection {
+    background: rgba(212, 168, 83, 0.28);
+  }
+
+  input,
+  select,
+  textarea {
+    color: #e8dcc8;
+    background-color: transparent;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #4a4236;
+  }
+}
+
+@layer utilities {
+  .border-subtle {
+    border-color: var(--border);
+  }
+
+  .border-bright {
+    border-color: var(--border-bright);
+  }
+
+  .border-dim {
+    border-color: var(--border-dim);
+  }
+
+  .bg-dot-grid {
+    background-image: radial-gradient(rgba(212, 168, 83, 0.07) 1px, transparent 1px);
+    background-size: 26px 26px;
+  }
+
+  .bg-hero-glow {
+    background-image: radial-gradient(
+      ellipse 90% 55% at 50% -5%,
+      rgba(212, 168, 83, 0.07) 0%,
+      transparent 65%
+    );
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #e8c56a 0%, #d4a853 50%, #b88a35 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .card-accent {
+    position: relative;
+  }
+
+  .card-accent::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 12%;
+    bottom: 12%;
+    width: 2px;
+    background: linear-gradient(to bottom, transparent, #d4a853, transparent);
+    opacity: 0.5;
+    border-radius: 0 1px 1px 0;
+  }
+
+  .card-accent:hover::before {
+    opacity: 1;
+    transition: opacity 0.2s;
+  }
+
+  .opacity-0-anim {
+    opacity: 0;
+  }
+}
+
+/* Staggered animation helpers */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.18s; }
+.stagger-4 { animation-delay: 0.26s; }
+.stagger-5 { animation-delay: 0.34s; }
+.stagger-6 { animation-delay: 0.42s; }
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #12100e;
+}
+::-webkit-scrollbar-thumb {
+  background: #4a4236;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #7a5e28;
 }
