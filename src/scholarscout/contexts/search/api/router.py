@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
+
 from fastapi import APIRouter, Depends, Query
 
 from scholarscout.contexts.search.api.schemas import SearchResponseSchema
@@ -48,7 +50,7 @@ async def search_opportunities(
         sort_by=sort_by,
     )
     result = await service.search(req)
-    return SearchResponseSchema.model_validate(result.__dict__)
+    return SearchResponseSchema.model_validate(asdict(result))
 
 
 @router.get("/autocomplete")
