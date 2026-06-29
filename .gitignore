@@ -1,0 +1,120 @@
+# ── Python ─────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+
+# Distribution / packaging
+.eggs/
+*.egg-info/
+dist/
+build/
+wheels/
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ── Testing ────────────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+nosetests.xml
+*.cover
+*.coveralls.json
+
+# ── Type checking ──────────────────────────────────────────────────────────────
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyright/
+.ruff_cache/
+
+# ── Environment & Secrets ──────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+secrets/
+
+# ── Database ───────────────────────────────────────────────────────────────────
+*.sqlite
+*.sqlite3
+*.db
+
+# ── Alembic ────────────────────────────────────────────────────────────────────
+# Migration versions are committed; only exclude generated artifacts
+migrations/__pycache__/
+
+# ── Celery ────────────────────────────────────────────────────────────────────
+celerybeat-schedule
+celerybeat-schedule.db
+celerybeat.pid
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+# Preserve docker-compose files; only ignore local overrides and volumes
+docker-compose.override.yml
+.docker/
+
+# ── IDEs ──────────────────────────────────────────────────────────────────────
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.iml
+*.iws
+*.ipr
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+*.out
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V8
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── Object storage local cache ─────────────────────────────────────────────────
+.minio/
+minio-data/
+
+# ── Temporary / scratch ────────────────────────────────────────────────────────
+tmp/
+.tmp/
+scratch/
+*.bak
+*.swp
+*.swo
+*~
+
+# ── Build artifacts ────────────────────────────────────────────────────────────
+.uv/
+uv.lock.bak

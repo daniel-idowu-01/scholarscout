@@ -7,7 +7,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 
 RUN pip install uv
+
+# Layer 1: install dependencies only (cached until pyproject.toml changes)
 COPY pyproject.toml .
+RUN uv sync --no-dev --no-install-project
+
+# Layer 2: copy source and install the package itself
+COPY src/ ./src/
 RUN uv sync --no-dev --no-editable
 
 

@@ -11,7 +11,7 @@ import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, TypeVar
+from typing import Any, Generic, TypeVar
 
 T = TypeVar("T")
 
@@ -171,7 +171,7 @@ class PageRequest:
 
 
 @dataclass(frozen=True)
-class PageResult[T]:
+class PageResult(Generic[T]):
     items: list[T]
     total: int
     page: int

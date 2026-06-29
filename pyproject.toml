@@ -6,7 +6,6 @@ build-backend = "hatchling.build"
 name = "scholarscout"
 version = "0.1.0"
 description = "Production-grade graduate opportunity discovery and recommendation platform"
-readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
 dependencies = [
@@ -25,6 +24,7 @@ dependencies = [
     # Caching & Messaging
     "redis[hiredis]>=5.0.0",
     "celery[redis]>=5.4.0",
+    "flower>=2.0.0",
 
     # Object Storage
     "boto3>=1.35.0",

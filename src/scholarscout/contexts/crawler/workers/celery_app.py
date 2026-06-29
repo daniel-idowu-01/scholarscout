@@ -107,7 +107,7 @@ app.config_from_object(
     }
 )
 
-# Auto-discover tasks from all contexts
+# Auto-discover tasks from all contexts (finds <package>.tasks modules)
 app.autodiscover_tasks(
     [
         "scholarscout.contexts.crawler.workers",
@@ -117,3 +117,6 @@ app.autodiscover_tasks(
         "scholarscout.contexts.search.workers",
     ]
 )
+
+# Explicitly import modules not named "tasks.py" so Celery registers them
+import scholarscout.contexts.crawler.workers.scheduler  # noqa: E402, F401
