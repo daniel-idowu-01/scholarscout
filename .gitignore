@@ -106,6 +106,12 @@ desktop.ini
 .minio/
 minio-data/
 
+# ── Node.js ───────────────────────────────────────────────────────────────────
+node_modules/
+.next/
+npm-debug.log*
+yarn-error.log*
+
 # ── Temporary / scratch ────────────────────────────────────────────────────────
 tmp/
 .tmp/
