@@ -47,6 +47,9 @@ dependencies = [
     # Auth
     "pyjwt[crypto]>=2.9.0",
     "passlib[bcrypt]>=1.7.4",
+    # passlib 1.7.4 is incompatible with bcrypt >= 4.1 (removed __about__ and
+    # its long-password probe now raises); pin until passlib is replaced.
+    "bcrypt<4.1",
 
     # Validation & Serialization
     "pydantic[email]>=2.9.0",

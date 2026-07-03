@@ -6,7 +6,10 @@ import os
 from logging.config import fileConfig
 
 from alembic import context
+from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
+
+load_dotenv()
 
 # Import all models so Alembic can detect them for autogenerate
 from scholarscout.database import Base  # noqa: F401

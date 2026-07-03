@@ -12,8 +12,13 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any
 
+from dotenv import load_dotenv
 from pydantic import AnyHttpUrl, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Nested settings groups read os.environ directly (they have no env_file),
+# so .env must be loaded before any of them is instantiated.
+load_dotenv()
 
 
 class DatabaseSettings(BaseSettings):

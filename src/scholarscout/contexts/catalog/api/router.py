@@ -18,9 +18,10 @@ from scholarscout.shared.domain.base import PageRequest, PageResult
 router = APIRouter(prefix="/opportunities", tags=["Opportunities"])
 
 
-async def _get_session() -> AsyncSession:
-    from scholarscout.api.deps import get_db_session
-    return get_db_session()
+async def _get_session():
+    from scholarscout.api.deps import get_db
+    async for session in get_db():
+        yield session
 
 
 @router.get("/", response_model=OpportunityListResponse)

@@ -36,9 +36,10 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
-def _get_auth_service() -> AuthService:
-    from scholarscout.api.deps import get_auth_service
-    return get_auth_service()
+async def _get_auth_service():
+    from scholarscout.api.deps import get_auth_service, get_db
+    async for session in get_db():
+        yield get_auth_service(session)
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)

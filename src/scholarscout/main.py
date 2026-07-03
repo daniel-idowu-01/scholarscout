@@ -140,6 +140,9 @@ def create_app() -> FastAPI:
     @app.get("/health", tags=["Health"], include_in_schema=False)
     async def health() -> JSONResponse:
         from scholarscout.database import ping_db
+        from scholarscout.contexts.search.infrastructure.opensearch_client import (
+            get_opensearch_client,
+        )
         db_ok = await ping_db()
         os_client = get_opensearch_client()
         os_ok = await os_client.ping()

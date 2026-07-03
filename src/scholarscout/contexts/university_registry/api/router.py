@@ -21,9 +21,10 @@ from scholarscout.shared.domain.exceptions import DuplicateEntityError, EntityNo
 router = APIRouter(prefix="/universities", tags=["Universities"])
 
 
-def _get_service() -> UniversityService:
-    from scholarscout.api.deps import get_university_service
-    return get_university_service()
+async def _get_service():
+    from scholarscout.api.deps import get_db, get_university_service
+    async for session in get_db():
+        yield get_university_service(session)
 
 
 @router.post("/", response_model=UniversityResponse, status_code=status.HTTP_201_CREATED)
