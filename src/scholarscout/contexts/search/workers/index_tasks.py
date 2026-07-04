@@ -2,9 +2,21 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from scholarscout.contexts.crawler.workers.celery_app import app
+
+
+def _run(coro: Any) -> Any:
+    # Tasks scheduled with countdown/eta may execute in a timer thread,
+    # which has no event loop — create one on demand.
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop.run_until_complete(coro)
 
 
 @app.task(
@@ -12,8 +24,7 @@ from scholarscout.contexts.crawler.workers.celery_app import app
     queue="crawl.low",
 )
 def index_opportunities(university_id: str) -> dict[str, Any]:
-    import asyncio
-    return asyncio.get_event_loop().run_until_complete(_index_async(university_id))
+    return _run(_index_async(university_id))
 
 
 async def _index_async(university_id: str) -> dict[str, Any]:
@@ -37,8 +48,7 @@ async def _index_async(university_id: str) -> dict[str, Any]:
     queue="crawl.low",
 )
 def refresh_indexes() -> dict[str, Any]:
-    import asyncio
-    return asyncio.get_event_loop().run_until_complete(_rebuild_async())
+    return _run(_rebuild_async())
 
 
 async def _rebuild_async() -> dict[str, Any]:

@@ -118,5 +118,18 @@ app.autodiscover_tasks(
     ]
 )
 
+# Ensure all ORM models are registered so cross-context string foreign keys
+# (e.g. source_pages.university_id → "universities.id") resolve in workers.
+import scholarscout.contexts.catalog.infrastructure.models  # noqa: E402, F401
+import scholarscout.contexts.crawler.infrastructure.models  # noqa: E402, F401
+import scholarscout.contexts.university_registry.infrastructure.models  # noqa: E402, F401
+import scholarscout.contexts.users.infrastructure.models  # noqa: E402, F401
+
 # Explicitly import modules not named "tasks.py" so Celery registers them
+# (autodiscover_tasks only finds modules literally named "tasks")
+import scholarscout.contexts.catalog.workers.catalog_tasks  # noqa: E402, F401
+import scholarscout.contexts.crawler.workers.crawl_tasks  # noqa: E402, F401
 import scholarscout.contexts.crawler.workers.scheduler  # noqa: E402, F401
+import scholarscout.contexts.extraction.workers.extraction_tasks  # noqa: E402, F401
+import scholarscout.contexts.notifications.workers.notification_tasks  # noqa: E402, F401
+import scholarscout.contexts.search.workers.index_tasks  # noqa: E402, F401
