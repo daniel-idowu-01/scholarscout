@@ -50,12 +50,13 @@ async def _schedule_async() -> dict[str, Any]:
     from scholarscout.database import get_session
     from scholarscout.contexts.crawler.infrastructure.models import SourcePageModel
     from scholarscout.contexts.university_registry.infrastructure.models import UniversityModel
-    from scholarscout.contexts.crawler.workers.crawl_tasks import crawl_url
-    from sqlalchemy import select, and_
+    from scholarscout.contexts.crawler.workers.crawl_tasks import crawl_url, discover_university
+    from sqlalchemy import select, and_, func
 
     now = datetime.now(UTC)
     enqueued_total = 0
     universities_processed = 0
+    discoveries_enqueued = 0
 
     async with get_session() as session:
         # Fetch active universities
@@ -68,6 +69,24 @@ async def _schedule_async() -> dict[str, Any]:
         unis = (await session.execute(uni_stmt)).scalars().all()
 
         for uni in unis:
+            # Bootstrap: a newly activated university has no source pages yet —
+            # seed discovery, which generates candidate URLs and enqueues crawls.
+            page_count = (
+                await session.execute(
+                    select(func.count())
+                    .select_from(SourcePageModel)
+                    .where(SourcePageModel.university_id == uni.id)
+                )
+            ).scalar_one()
+            if page_count == 0:
+                discover_university.apply_async(
+                    kwargs={"university_id": str(uni.id)},
+                    queue="crawl.low",
+                )
+                discoveries_enqueued += 1
+                universities_processed += 1
+                continue
+
             # Find pages due for crawl
             page_stmt = (
                 select(SourcePageModel)
@@ -105,9 +124,14 @@ async def _schedule_async() -> dict[str, Any]:
             universities_processed += 1
 
     logger.info(
-        "Scheduler: %d universities, %d URLs enqueued", universities_processed, enqueued_total
+        "Scheduler: %d universities, %d URLs enqueued, %d discoveries enqueued",
+        universities_processed, enqueued_total, discoveries_enqueued,
     )
-    return {"universities": universities_processed, "urls_enqueued": enqueued_total}
+    return {
+        "universities": universities_processed,
+        "urls_enqueued": enqueued_total,
+        "discoveries_enqueued": discoveries_enqueued,
+    }
 
 
 def _select_queue(priority_score: float) -> str:

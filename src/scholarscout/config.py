@@ -82,7 +82,9 @@ class AuthSettings(BaseSettings):
 
 
 class LLMSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="LLM_")
+    # Single assignment only — a second model_config would overwrite the prefix
+    # and silently detach LLM_* env vars from these fields.
+    model_config = SettingsConfigDict(env_prefix="LLM_", populate_by_name=True)
 
     default_provider: str = "anthropic"
     max_tokens_per_call: int = 4096
@@ -100,7 +102,10 @@ class LLMSettings(BaseSettings):
         default="claude-sonnet-4-6", alias="ANTHROPIC_EXTRACTION_MODEL"
     )
 
-    model_config = SettingsConfigDict(env_prefix="", populate_by_name=True)
+    huggingface_api_key: str = Field(default="", alias="HUGGINGFACE_API_KEY")
+    huggingface_default_model: str = Field(
+        default="Qwen/Qwen2.5-7B-Instruct", alias="HUGGINGFACE_DEFAULT_MODEL"
+    )
 
 
 class CrawlerSettings(BaseSettings):

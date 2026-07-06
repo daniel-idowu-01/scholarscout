@@ -305,6 +305,9 @@ class ExtractionPipeline:
 def build_extraction_pipeline() -> ExtractionPipeline:
     """Factory for the pipeline — wires up all dependencies."""
     from scholarscout.contexts.extraction.infrastructure.llm.anthropic_provider import AnthropicProvider
+    from scholarscout.contexts.extraction.infrastructure.llm.huggingface_provider import (
+        HuggingFaceProvider,
+    )
     from scholarscout.contexts.extraction.infrastructure.llm.openai_provider import OpenAIProvider
     from scholarscout.shared.infrastructure.storage.object_storage import ObjectStorageClient
     from scholarscout.config import settings as cfg
@@ -319,6 +322,8 @@ def build_extraction_pipeline() -> ExtractionPipeline:
             llm = AnthropicProvider()
         elif cfg.llm.default_provider == "openai" and cfg.llm.openai_api_key:
             llm = OpenAIProvider()
+        elif cfg.llm.default_provider == "huggingface" and cfg.llm.huggingface_api_key:
+            llm = HuggingFaceProvider()
 
     s = cfg.storage
     storage = ObjectStorageClient(
