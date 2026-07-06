@@ -61,7 +61,7 @@ secrets/
 migrations/__pycache__/
 
 # ── Celery ────────────────────────────────────────────────────────────────────
-celerybeat-schedule
+celerybeat-schedule*
 celerybeat-schedule.db
 celerybeat.pid
 
