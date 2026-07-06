@@ -13,8 +13,8 @@ from scholarscout.contexts.crawler.workers.celery_app import app
 )
 def verify_active_opportunities() -> dict[str, Any]:
     """Re-crawl source pages of active opportunities to verify they still exist."""
-    import asyncio
-    return asyncio.get_event_loop().run_until_complete(_verify_async())
+    from scholarscout.shared.utils.async_utils import run_async
+    return run_async(_verify_async())
 
 
 async def _verify_async() -> dict[str, Any]:

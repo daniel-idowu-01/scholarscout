@@ -42,8 +42,8 @@ def schedule_pending_crawls() -> dict[str, Any]:
     Periodic task (every 5 min): enqueue crawl jobs for due pages.
     Idempotent: re-running within the same window does nothing.
     """
-    import asyncio
-    return asyncio.get_event_loop().run_until_complete(_schedule_async())
+    from scholarscout.shared.utils.async_utils import run_async
+    return run_async(_schedule_async())
 
 
 async def _schedule_async() -> dict[str, Any]:

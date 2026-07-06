@@ -68,6 +68,19 @@ class FetchError(Exception):
         self.retryable = retryable
 
 
+_DNS_FAILURE_MARKERS = (
+    "getaddrinfo failed",          # Windows (Errno 11001)
+    "Name or service not known",   # Linux
+    "nodename nor servname",       # macOS
+    "No address associated with hostname",
+)
+
+
+def _is_dns_failure(exc: Exception) -> bool:
+    text = str(exc)
+    return any(marker in text for marker in _DNS_FAILURE_MARKERS)
+
+
 class PageTooLargeError(FetchError):
     def __init__(self) -> None:
         super().__init__("Page exceeds maximum size limit", retryable=False)
@@ -173,6 +186,14 @@ class HttpFetcher:
             response = await client.get(url, headers=extra_headers)
         except httpx.TooManyRedirects as e:
             raise FetchError("Too many redirects", retryable=False) from e
+        except httpx.ConnectError as e:
+            # A host that doesn't resolve will never resolve — don't burn
+            # tenacity attempts or Celery retries on it (discovery guesses
+            # many nonexistent subdomains). FetchError is not in tenacity's
+            # retry set, so this propagates immediately.
+            if _is_dns_failure(e):
+                raise FetchError(f"DNS resolution failed: {e}", retryable=False) from e
+            raise
 
         status = response.status_code
         crawl_requests_total.labels(university_id=university_id, status=str(status)).inc()

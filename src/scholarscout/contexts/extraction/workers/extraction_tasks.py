@@ -25,10 +25,8 @@ def extract_page(
     html_uri: str,
     md_uri: str | None = None,
 ) -> dict[str, Any]:
-    import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _extract_page_async(source_page_id, university_id, html_uri, md_uri)
-    )
+    from scholarscout.shared.utils.async_utils import run_async
+    return run_async(_extract_page_async(source_page_id, university_id, html_uri, md_uri))
 
 
 async def _extract_page_async(

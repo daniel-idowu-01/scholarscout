@@ -33,8 +33,8 @@ logger = logging.getLogger(__name__)
     queue="notifications",
 )
 def send_digests(frequency: str) -> dict[str, Any]:
-    import asyncio
-    return asyncio.get_event_loop().run_until_complete(_send_digests_async(frequency))
+    from scholarscout.shared.utils.async_utils import run_async
+    return run_async(_send_digests_async(frequency))
 
 
 async def _send_digests_async(frequency: str) -> dict[str, Any]:
@@ -129,10 +129,8 @@ def send_notification(
     subject: str,
     body: str,
 ) -> dict[str, Any]:
-    import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _send_notification_async(user_id, channel, subject, body)
-    )
+    from scholarscout.shared.utils.async_utils import run_async
+    return run_async(_send_notification_async(user_id, channel, subject, body))
 
 
 async def _send_notification_async(

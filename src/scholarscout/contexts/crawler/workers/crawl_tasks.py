@@ -87,8 +87,8 @@ def crawl_url(
     Returns a dict with crawl result metadata for downstream tasks.
     This is the core unit of the crawler pipeline.
     """
-    import asyncio
-    return asyncio.get_event_loop().run_until_complete(
+    from scholarscout.shared.utils.async_utils import run_async
+    return run_async(
         _crawl_url_async(
             self, url, university_id, source_page_id, delay_seconds, use_playwright, etag
         )
@@ -258,10 +258,8 @@ def discover_university(self: CrawlTask, university_id: str) -> dict[str, Any]:
     Seed discovery for a university: generate candidate URLs,
     classify, and enqueue crawl jobs.
     """
-    import asyncio
-    return asyncio.get_event_loop().run_until_complete(
-        _discover_university_async(university_id)
-    )
+    from scholarscout.shared.utils.async_utils import run_async
+    return run_async(_discover_university_async(university_id))
 
 
 async def _discover_university_async(university_id: str) -> dict[str, Any]:
