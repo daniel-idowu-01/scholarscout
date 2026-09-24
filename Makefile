@@ -1,6 +1,6 @@
 .PHONY: help install dev prod migrate migrate-create test lint format typecheck clean \
         docker-up docker-down docker-build docker-logs docker-ps \
-        crawl-university index-opportunities seed
+        crawl-university index-opportunities seed seed-sources
 
 PYTHON := python
 PYTEST := pytest
@@ -94,6 +94,9 @@ run-flower: ## Run Celery Flower monitoring
 
 seed: ## Seed initial university data
 	$(PYTHON) -m scholarscout.scripts.seed_universities
+
+seed-sources: ## Register scholarship aggregator sites and pause university crawling
+	$(PYTHON) -m scholarscout.scripts.seed_sources
 
 crawl-university: ## Crawl a university (set DOMAIN=mit.edu)
 	$(PYTHON) -m scholarscout.scripts.crawl_university --domain $(DOMAIN)

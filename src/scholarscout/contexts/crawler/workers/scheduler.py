@@ -51,7 +51,7 @@ async def _schedule_async() -> dict[str, Any]:
     from scholarscout.contexts.crawler.infrastructure.models import SourcePageModel
     from scholarscout.contexts.university_registry.infrastructure.models import UniversityModel
     from scholarscout.contexts.crawler.workers.crawl_tasks import crawl_url, discover_university
-    from sqlalchemy import select, and_, func
+    from sqlalchemy import select, and_, func, or_
 
     now = datetime.now(UTC)
     enqueued_total = 0
@@ -94,7 +94,10 @@ async def _schedule_async() -> dict[str, Any]:
                     and_(
                         SourcePageModel.university_id == uni.id,
                         SourcePageModel.status.in_(["pending", "active"]),
-                        SourcePageModel.next_crawl_at <= now,
+                        or_(
+                            SourcePageModel.next_crawl_at <= now,
+                            SourcePageModel.next_crawl_at.is_(None),
+                        ),
                     )
                 )
                 .order_by(SourcePageModel.priority_score.desc())
@@ -112,6 +115,7 @@ async def _schedule_async() -> dict[str, Any]:
                         "delay_seconds": uni.crawl_delay_seconds,
                         "use_playwright": uni.crawl_use_playwright,
                         "etag": page.etag,
+                        "role": (page.metadata_ or {}).get("role", "page"),
                     },
                     queue=queue,
                 )

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from celery import Task, shared_task
@@ -29,6 +29,16 @@ from scholarscout.shared.infrastructure.telemetry.metrics import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Page roles (stored in SourcePage.metadata["role"])
+ROLE_PAGE = "page"
+ROLE_HUB = "hub"
+ROLE_POST = "post"
+
+# Re-crawl cadence by role: hubs change as new posts land; posts rarely change
+_ROLE_FREQUENCY_HOURS = {ROLE_HUB: 6, ROLE_POST: 168}
+
+MAX_NEW_POSTS_PER_HUB = 50
 
 
 class CrawlTask(Task):
@@ -80,9 +90,15 @@ def crawl_url(
     delay_seconds: float = 2.0,
     use_playwright: bool = False,
     etag: str | None = None,
+    role: str = ROLE_PAGE,
 ) -> dict[str, Any]:
     """
     Crawl a single URL and persist the result.
+
+    role:
+      "page" → university page; extracted when content changes
+      "hub"  → aggregator listing page; its post links are enqueued, no extraction
+      "post" → aggregator article; extracted when content changes
 
     Returns a dict with crawl result metadata for downstream tasks.
     This is the core unit of the crawler pipeline.
@@ -90,7 +106,7 @@ def crawl_url(
     from scholarscout.shared.utils.async_utils import run_async
     return run_async(
         _crawl_url_async(
-            self, url, university_id, source_page_id, delay_seconds, use_playwright, etag
+            self, url, university_id, source_page_id, delay_seconds, use_playwright, etag, role
         )
     )
 
@@ -103,6 +119,7 @@ async def _crawl_url_async(
     delay_seconds: float,
     use_playwright: bool,
     etag: str | None,
+    role: str = ROLE_PAGE,
 ) -> dict[str, Any]:
     from scholarscout.contexts.crawler.infrastructure.fetcher import FetchError
     from scholarscout.contexts.crawler.infrastructure.playwright_fetcher import (
@@ -160,7 +177,19 @@ async def _crawl_url_async(
         result=result,
         html_uri=html_uri,
         md_uri=md_uri,
+        role=role,
     )
+
+    # Step 6: Hubs expand the frontier with any posts we haven't seen yet
+    posts_enqueued = 0
+    if role == ROLE_HUB:
+        posts_enqueued = await _enqueue_new_posts(
+            hub_url=result.final_url or url,
+            html=html,
+            university_id=university_id,
+            delay_seconds=delay_seconds,
+            use_playwright=use_playwright,
+        )
 
     pages_crawled_total.labels(university_id=university_id, page_type="unknown").inc()
 
@@ -174,7 +203,54 @@ async def _crawl_url_async(
         "md_uri": md_uri,
         "university_id": university_id,
         "source_page_id": source_page_id,
+        "role": role,
+        "posts_enqueued": posts_enqueued,
     }
+
+
+async def _enqueue_new_posts(
+    hub_url: str,
+    html: str,
+    university_id: str,
+    delay_seconds: float,
+    use_playwright: bool,
+) -> int:
+    """Enqueue crawls for post links on a hub page that have no SourcePage yet."""
+    from scholarscout.database import get_session
+    from scholarscout.contexts.crawler.infrastructure.models import SourcePageModel
+    from scholarscout.contexts.discovery.infrastructure.link_extractor import extract_post_links
+    from sqlalchemy import select
+
+    posts = extract_post_links(hub_url, html)
+    if not posts:
+        return 0
+
+    async with get_session() as session:
+        known = set(
+            (
+                await session.execute(
+                    select(SourcePageModel.url_hash).where(
+                        SourcePageModel.url_hash.in_([p["url_hash"] for p in posts])
+                    )
+                )
+            ).scalars()
+        )
+
+    new_posts = [p for p in posts if p["url_hash"] not in known][:MAX_NEW_POSTS_PER_HUB]
+    for post in new_posts:
+        crawl_url.apply_async(
+            kwargs={
+                "url": post["url"],
+                "university_id": university_id,
+                "delay_seconds": delay_seconds,
+                "use_playwright": use_playwright,
+                "role": ROLE_POST,
+            },
+            queue="crawl.normal",
+        )
+
+    logger.info("Hub %s: %d post links, %d new enqueued", hub_url, len(posts), len(new_posts))
+    return len(new_posts)
 
 
 async def _update_source_page(
@@ -184,6 +260,7 @@ async def _update_source_page(
     result: Any,
     html_uri: str,
     md_uri: str | None,
+    role: str = ROLE_PAGE,
 ) -> None:
     """Persist crawl result and trigger extraction if content changed."""
     from scholarscout.database import get_session
@@ -207,17 +284,25 @@ async def _update_source_page(
                 url=url,
                 normalized_url=norm_url,
                 url_hash=h,
+                page_type="listing" if role == ROLE_HUB else "unknown",
+                crawl_frequency_hours=_ROLE_FREQUENCY_HOURS.get(role),
+                metadata_={"role": role},
                 discovered_at=datetime.now(UTC),
             )
             session.add(page_model)
 
+        now = datetime.now(UTC)
         content_changed = page_model.content_hash != result.content_hash
         page_model.status = "active"
         page_model.status_code = result.status_code
         page_model.content_hash = result.content_hash
         page_model.etag = result.etag
-        page_model.last_scraped_at = datetime.now(UTC)
-        page_model.last_verified_at = datetime.now(UTC)
+        page_model.last_scraped_at = now
+        page_model.last_verified_at = now
+        # Without this, pages created here are never picked up by the scheduler
+        if page_model.next_crawl_at is None or page_model.next_crawl_at <= now:
+            freq = page_model.crawl_frequency_hours or 24
+            page_model.next_crawl_at = now + timedelta(hours=freq)
 
         # Record snapshot
         snapshot = PageSnapshotModel(
@@ -232,8 +317,8 @@ async def _update_source_page(
         session.add(snapshot)
         await session.flush()
 
-        # Trigger extraction if content changed
-        if content_changed:
+        # Trigger extraction if content changed (hubs are listings, not opportunities)
+        if content_changed and role != ROLE_HUB:
             from scholarscout.contexts.extraction.workers.extraction_tasks import extract_page
             extract_page.apply_async(
                 kwargs={
@@ -271,9 +356,16 @@ async def _discover_university_async(university_id: str) -> dict[str, Any]:
         if not model:
             return {"status": "error", "error": "university not found"}
 
-    from scholarscout.contexts.discovery.infrastructure.url_generator import UrlGenerator
-    generator = UrlGenerator()
-    candidate_urls = generator.generate(model.website, model.domain)
+    if model.metadata_.get("source_type") == "aggregator":
+        # Aggregators: crawl the configured listing pages; posts are found from there
+        hub_urls = [model.website.rstrip("/") + "/", *model.crawl_extra_seeds]
+        candidate_urls = [
+            {"url": u, "priority": 80, "role": ROLE_HUB} for u in dict.fromkeys(hub_urls)
+        ]
+    else:
+        from scholarscout.contexts.discovery.infrastructure.url_generator import UrlGenerator
+        generator = UrlGenerator()
+        candidate_urls = generator.generate(model.website, model.domain)
 
     enqueued = 0
     for url_data in candidate_urls:
@@ -282,6 +374,8 @@ async def _discover_university_async(university_id: str) -> dict[str, Any]:
                 "url": url_data["url"],
                 "university_id": university_id,
                 "delay_seconds": model.crawl_delay_seconds,
+                "use_playwright": model.crawl_use_playwright,
+                "role": url_data.get("role", ROLE_PAGE),
             },
             priority=url_data.get("priority", 30),
             queue="crawl.low",

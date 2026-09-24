@@ -15,6 +15,7 @@ This runs after every successful page fetch to expand the crawl frontier.
 from __future__ import annotations
 
 import logging
+import re
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -111,3 +112,72 @@ class LinkExtractor:
         # Sort by priority descending
         candidates.sort(key=lambda c: c["priority"], reverse=True)
         return candidates
+
+
+# ── Aggregator post detection ──────────────────────────────────────────────
+#
+# Aggregator sites (opportunitydesk, scholars4dev, ...) publish one opportunity
+# per post. Their listing pages ("hubs") link to posts alongside a lot of
+# navigation: categories, tags, pagination, legal pages, tools. Post URLs are
+# recognisable by a long hyphenated slug in the last path segment, e.g.
+#   /2026/09/15/gates-cambridge-scholarships-2027-2028/
+#   /3299/british-chevening-scholarships/
+#   /chevening-scholarship  (two hyphens minimum → too short, skipped)
+
+_NON_POST_SEGMENTS = frozenset(
+    {
+        "category", "categories", "tag", "tags", "author", "page", "feed",
+        "search", "wp-admin", "wp-content", "wp-includes", "wp-json",
+        "cdn-cgi", "amp", "login", "register", "account", "shop", "services",
+        "service", "calculators",
+    }
+)
+
+_NON_POST_SLUG_WORDS = re.compile(
+    r"(privacy|cookie|disclaimer|terms|contact|about|advertis|submit-opportunity"
+    r"|editorial-policy|calculator|whatsapp-group|professional-services)",
+    re.IGNORECASE,
+)
+
+MIN_SLUG_HYPHENS = 2
+
+
+def is_post_url(url: str) -> bool:
+    """True if the URL looks like an individual article on an aggregator site."""
+    parsed = urlparse(url)
+    if parsed.query:
+        return False
+    segments = [s for s in parsed.path.lower().split("/") if s]
+    if not segments:
+        return False
+    if any(s in _NON_POST_SEGMENTS for s in segments):
+        return False
+    slug = segments[-1]
+    if slug.count("-") < MIN_SLUG_HYPHENS:
+        return False
+    return not _NON_POST_SLUG_WORDS.search(slug)
+
+
+def extract_post_links(base_url: str, html: str, max_links: int = 100) -> list[dict]:
+    """
+    Extract links to individual posts from an aggregator listing page.
+    http links are upgraded to https when the hub itself is https, so the
+    same post reached via both schemes dedupes to one SourcePage.
+    """
+    upgrade = urlparse(base_url).scheme == "https"
+    posts: list[dict] = []
+    seen: set[str] = set()
+    for candidate in LinkExtractor().extract(base_url, html, max_links=MAX_LINKS_PER_PAGE):
+        url = candidate["url"]
+        if upgrade and url.startswith("http://"):
+            url = "https://" + url[len("http://"):]
+        if not is_post_url(url):
+            continue
+        h = url_hash(url)
+        if h in seen:
+            continue
+        seen.add(h)
+        posts.append({**candidate, "url": url, "url_hash": h})
+        if len(posts) >= max_links:
+            break
+    return posts
